@@ -60,6 +60,12 @@ def default(obj):
         return obj.isoformat()
 
 
+def delete(element):
+    db.session.delete(element)
+    db.session.commit()
+    return ""
+
+
 with app.app_context():
     db.create_all()
 
@@ -78,16 +84,24 @@ with app.app_context():
         db.session.commit()
 
 
-@app.route("/users", methods=['GET', 'POST'])
-def all_users_page():
+@app.route("/<key_word>", methods=['GET', 'POST'])
+def all_users_page(key_word):
     result = []
+    if key_word not in ["users", "offers", "orders"]:
+        return "Page not Found", 404
+    model = User
+    if key_word == "orders":
+        model = Order
+    elif key_word == "offers":
+        model = Offer
     if request.method == 'GET':
-        all_users = User.query.all()
-        [result.append(user.make_dict()) for user in all_users]
-        return json.dumps(result, sort_keys=False, indent=4), 200, {'Content-Type': 'application/json; charset=utf-8'}
+        all_elements = model.query.all()
+        [result.append(one.make_dict()) for one in all_elements]
+        return json.dumps(result, default=default, ensure_ascii=False, sort_keys=False, indent=4), 200, \
+            {'Content-Type': 'application/json; charset=utf-8'}
     elif request.method == 'POST':
         new_data = json.loads(request.data)
-        db.session.add(User(**new_data))
+        db.session.add(model(**new_data))
         db.session.commit()
         return "", 201
 
@@ -114,24 +128,7 @@ def user_by_id(user_id):
         return "", 201
 
     elif request.method == 'DELETE':
-        db.session.delete(user)
-        db.session.commit()
-        return "", 201
-
-
-@app.route("/orders", methods=['GET', 'POST'])
-def all_orders_page():
-    result = []
-    if request.method == 'GET':
-        all_orders = Order.query.all()
-        [result.append(odr.make_dict()) for odr in all_orders]
-        return json.dumps(result, default=default, ensure_ascii=False, sort_keys=False, indent=4), \
-            200, {'Content-Type': 'application/json; charset=utf-8'}
-    elif request.method == 'POST':
-        new_data = json.loads(request.data)
-        db.session.add(Order(**new_data))
-        db.session.commit()
-        return "", 201
+        return delete(user), 201
 
 
 @app.route("/orders/<int:order_id>", methods=['GET', 'PUT', 'DELETE'])
@@ -158,24 +155,7 @@ def order_by_id(order_id):
         return "", 201
 
     elif request.method == 'DELETE':
-        db.session.delete(order)
-        db.session.commit()
-        return "", 201
-
-
-@app.route("/offers", methods=['GET', 'POST'])
-def all_offers_page():
-    result = []
-    if request.method == 'GET':
-        all_offers = Offer.query.all()
-        [result.append(offer.make_dict()) for offer in all_offers]
-        return json.dumps(result, ensure_ascii=False, sort_keys=False, indent=4), \
-            200, {'Content-Type': 'application/json; charset=utf-8'}
-    elif request.method == 'POST':
-        new_data = json.loads(request.data)
-        db.session.add(Offer(**new_data))
-        db.session.commit()
-        return "", 201
+        return delete(order), 201
 
 
 @app.route("/offers/<int:offer_id>", methods=['GET', 'PUT', 'DELETE'])
@@ -196,9 +176,7 @@ def offer_by_id(offer_id):
         return "", 201
 
     elif request.method == 'DELETE':
-        db.session.delete(offer)
-        db.session.commit()
-        return "", 201
+        return delete(offer), 201
 
 
 if __name__ == '__main__':
